@@ -15,3 +15,14 @@ The solution is implemented as follows:
 * It then performs the addition for that specific index: `c[i] = a[i] + b[i]`. 
 
 Instead of a single core doing all the work sequentially, thousands of GPU cores perform their individual additions at the same time. This parallel approach dramatically reduces the overall computation time (`gpu_time`) , resulting in a significant "Speedup" over the CPU. 
+
+
+
+OUTPUT:
+
+CUDA vs CPU Vector Addition Performance (Command Line Method)
+Vector Size: 1000       | Correct: PASS | CPU Time: 0.002 ms    | GPU Time: 0.749 ms    | Speedup: 0.003x
+Vector Size: 100000     | Correct: PASS | CPU Time: 0.261 ms    | GPU Time: 0.637 ms    | Speedup: 0.410x
+Vector Size: 1000000    | Correct: PASS | CPU Time: 2.208 ms    | GPU Time: 4.078 ms    | Speedup: 0.541x
+Vector Size: 10000000   | Correct: PASS | CPU Time: 31.934 ms   | GPU Time: 52.754 ms   | Speedup: 0.605x
+Vector Size: 20000000   | Correct: PASS | CPU Time: 56.961 ms   | GPU Time: 74.029 ms   | Speedup: 0.769x
