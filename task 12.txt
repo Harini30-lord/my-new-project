@@ -1,0 +1,150 @@
+TASK 12
+
+CODE :
+
+#include <iostream>
+#include <cuda_runtime.h>
+#include <chrono>
+#include <iomanip> // For formatting output
+#include <cmath>   // For fabs (absolute float value)
+
+// --- CUDA Kernel ---
+// This function runs on the GPU.
+// It transposes a matrix from 'input' to 'output'.
+__global__ void transposeCUDA(float *input, float *output, int width, int height) {
+    // Calculate global thread indices (x for column, y for row).
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+    // Check if indices are within matrix bounds.
+    if (x < width && y < height) {
+        // Calculate original index (row-major).
+        int in_idx = y * width + x;
+        // Calculate transposed index (column-major in output).
+        int out_idx = x * height + y;
+        // Perform the transpose: output[C][R] = input[R][C]
+        output[out_idx] = input[in_idx];
+    }
+}
+
+// --- CPU Function ---
+// This function runs on the CPU.
+// It transposes a matrix using standard loops.
+void transposeCPU(float *input, float *output, int width, int height) {
+    for (int y = 0; y < height; y++) {        // Loop through rows
+        for (int x = 0; x < width; x++) {       // Loop through columns
+            // Perform the transpose: output[C][R] = input[R][C]
+            output[x * height + y] = input[y * width + x];
+        }
+    }
+}
+
+// --- Test Function ---
+// This function runs a test for a given matrix size on both CPU and GPU.
+void runTest(int width, int height) {
+    int N = width * height; // Total number of elements in the matrix
+    size_t size = N * sizeof(float); // Total memory size in bytes
+
+    // Allocate memory on the CPU (host) for input and outputs.
+    float *h_input = new float[N];
+    float *h_output_cpu = new float[N];
+    float *h_output_gpu = new float[N];
+
+    // Initialize the input matrix with simple values (0, 1, 2, ...).
+    for (int i = 0; i < N; i++) {
+        h_input[i] = static_cast<float>(i);
+    }
+
+    // --- CPU Transpose ---
+    auto start_cpu = std::chrono::high_resolution_clock::now(); // Start CPU timer
+    transposeCPU(h_input, h_output_cpu, width, height);
+    auto end_cpu = std::chrono::high_resolution_clock::now();   // Stop CPU timer
+    float cpu_time = std::chrono::duration<float, std::milli>(end_cpu - start_cpu).count(); // Calculate CPU time
+
+    // --- GPU Transpose Setup ---
+    // Allocate memory on the GPU (device) for input and output.
+    float *d_input, *d_output;
+    cudaMalloc(&d_input, size);
+    cudaMalloc(&d_output, size);
+
+
+    // Copy the input data from CPU to GPU.
+    cudaMemcpy(d_input, h_input, size, cudaMemcpyHostToDevice);
+
+
+    // Define GPU kernel launch parameters:
+    // threadsPerBlock: threads in each block (e.g., 16x16 = 256 threads)
+    // blocksPerGrid: number of blocks needed to cover the matrix
+    dim3 threadsPerBlock(16, 16);
+    dim3 blocksPerGrid((width + threadsPerBlock.x - 1) / threadsPerBlock.x,
+                       (height + threadsPerBlock.y - 1) / threadsPerBlock.y);
+
+
+
+    // --- GPU Transpose Execution ---
+    auto start_gpu = std::chrono::high_resolution_clock::now(); // Start GPU timer
+    // Launch the CUDA kernel on the GPU.
+    transposeCUDA<<<blocksPerGrid, threadsPerBlock>>>(d_input, d_output, width, height);
+    cudaDeviceSynchronize();            // Wait for all GPU operations to finish.
+    auto end_gpu = std::chrono::high_resolution_clock::now();   // Stop GPU timer
+    float gpu_time = std::chrono::duration<float, std::milli>(end_gpu - start_gpu).count(); // Calculate GPU time
+
+    // Copy the result data from GPU back to CPU.
+    cudaMemcpy(h_output_gpu, d_output, size, cudaMemcpyDeviceToHost);
+
+
+
+    // --- Validation ---
+    // Compare CPU and GPU results to ensure correctness.
+    bool correct = true;
+    for (int i = 0; i < N; i++) {
+        // Check if values are very close (due to floating point precision).
+        if (fabs(h_output_cpu[i] - h_output_gpu[i]) > 1e-5) {
+            correct = false;
+            break;
+        }
+    }
+
+
+    // --- Report Results ---
+    std::cout << std::fixed << std::setprecision(3); // Set output precision
+    std::cout << "Matrix " << height << "x" << width
+              << " | Correct: " << (correct ? "PASS" : "FAIL")
+              << " | CPU: " << cpu_time << " ms"
+              << " | GPU: " << gpu_time << " ms"
+              << " | Speedup: " << cpu_time / gpu_time << "x\n"; // Calculate how many times faster GPU is
+
+
+
+    // --- Cleanup ---
+    // Free CPU memory.
+    delete[] h_input;
+    delete[] h_output_cpu;
+    delete[] h_output_gpu;
+    // Free GPU memory.
+    cudaFree(d_input);
+    cudaFree(d_output);
+}
+
+
+
+// --- Main Function ---
+// Entry point of the program.
+int main() {
+    std::cout << "CUDA Matrix Transpose vs CPU\n";
+
+    // Run tests with various matrix dimensions.
+    runTest(2, 2);           // Tiny matrix
+    runTest(4, 4);           // Small matrix
+    runTest(16, 16);         // Very small but good for visual validation
+    runTest(64, 64);         // Small test, reasonably GPU-friendly
+    runTest(128, 128);       // Medium-small
+    runTest(256, 256);       // Medium test
+    runTest(512, 512);       // Medium-large matrix
+    runTest(1024, 1024);     // Large matrix
+
+    return 0; // Program finished successfully
+}
+
+
+OUTPUT :
