@@ -1,0 +1,44 @@
+Main Problem: 
+           
+    Sequential Bottleneck and Inefficient Memory Access
+The main problem is the poor performance of a CPU when transposing large matrices. The CPU implementation, transposeCPU, uses nested loops to copy each element from its original position to its new, transposed position one at a time
+
+
+
+Solution: 
+        Parallel Processing on the GPU
+The solution presented in the code is to use the massively parallel architecture of a GPU, which is particularly well-suited for grid-based tasks like matrix operations.
+
+
+This solution is implemented as follows:
+
+A grid of thread blocks is launched on the GPU, which naturally maps to the  structure of the matrix.
+
+The transposeCUDA kernel is executed by thousands of threads simultaneously.
+Each thread is responsible for moving a single element. 
+
+It independently calculates its unique column (x) and row (y) coordinates within the matrix.
+
+Using these coordinates, each thread computes the element's original index (in_idx) and its final transposed index (out_idx).
+
+It then performs the copy: output[out_idx] = input[in_idx].
+
+Because all threads perform this copy operation at the same time for their assigned elements, the entire matrix is transposed much more quickly than the sequential CPU method. 
+This results in a significant performance "Speedup".
+
+
+OUTPUT:
+
+
+Matrix Dimensions: 2048x2048
+Matrix Size: 16 MB
+
+Running CPU transpose...
+CPU transpose time: 62.2278 ms
+
+Running GPU transpose...
+GPU kernel time: 0.51024 ms
+
+
+
+
