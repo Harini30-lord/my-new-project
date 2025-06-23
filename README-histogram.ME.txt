@@ -12,3 +12,8 @@
 The code solves this critical problem by using an atomic operation. The line atomicAdd(&histogram[data[i]], 1);  ensures that the operation of reading a value from a bin, adding 1 to it, and writing it back is atomic. This means it is an indivisible action that cannot be interrupted by other threads trying to access the same memory location. When multiple threads attempt to update the same bin, atomicAdd forces them into a temporary queue for that specific memory address, guaranteeing that every increment is correctly applied.
 
 
+
+
+
+
+
